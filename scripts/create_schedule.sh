@@ -1,15 +1,26 @@
 #!/bin/bash
 ##
 # @file
-# @author Bernhard Froemel
+# @author Bernhard Froemel, Denise Ratasich
 # @date WS 2014/15
 #
 # @brief Generates a schedule for the info beamer nodes.
+#
+# TUWEL CSV file format, example (without email column):
+# Kurs:; OSUE Test
+# :
+# Abgabetermin:;Mittwoch, 9. November 2016, 23:55
+# ;
+# Datum & Zeit;Ort;Trainer/in;Teilnehmer/innen;Matrikelnummer;Email;Teilg.;Bewertung;Feedback
+# Fr 11.11.2016 08:00 - 09:30;test;Denise Ratasich;Christian Hirsch[DR];0825187;christian.hirsch@tuwien.ac.at;;;
+# Fr 11.11.2016 08:00 - 09:30;test;Denise Ratasich;Denise Ratasich;0826389;denise.ratasich@tuwien.ac.at;;;
+#
+# Students who are registered by supervisors are marked with [xx].
 ##
 
 function usage {
   cat <<EOF
-USAGE: $0 <exam> <start room> <exam date> <enrolments>
+USAGE: $0 <exam> <start room> <enrolments>
 
 Generates a schedule for the info beamer nodes.
 
@@ -17,18 +28,18 @@ Arguments:
   <exam>       Exam number out of {1|2}. Rooms and duration depend on this number.
   <start room> Starting room out of {1|2|3|4}. At the second exam, room 4 is
                not used for the practical part.
-  <exam date>  Date of the exam in iso format, e.g., "2016-04-15".
-  <enrolments> Exported enrolments csv from myTI.
+  <enrolments> Exported enrolments csv from TUWEL (without email column).
 EOF
   exit 1
 }
 
-if [ $# -ne 4 ]; then
+if [ $# -ne 3 ]; then
+  echo "[ERROR] Wrong number of arguments." >&2
   usage
 fi
 
 ROOM_START="$2"
-EXAM_DATE="$3"
+CSVFILE="$3"
 
 # Exam number specific settings:
 # TIL_ROOMS ... number of available rooms
@@ -40,19 +51,76 @@ elif [ "$1" -eq 2 ]; then
   TIL_ROOMS=3 # (TI4 is for multiple-choice test)
   LAB_START_OFFSET=30
 else
-  echo "Wrong exam number (must be 1 or 2): '$1'" >&2
+  echo "[ERROR] Wrong exam number (must be 1 or 2): '$1'" >&2
   usage
 fi
 
-if [ ! -f "$4" ]; then
-  echo "File does not exist: '$4'" >&2
+if [ ! -f "${CSVFILE}" ]; then
+  echo "[ERROR] File does not exist: '${CSVFILE}'" >&2
   usage
 fi
+
+
+##
+# TUWEL to myTI csv
+##
+
+#
+# convert TUWEL csv to old csv format (TUWEL csv cannot be sorted by the date
+# field, although this may not be necessary, as before exporting it can be
+# sorted by date and time - actually it is by default)
+#
+# Date & time;Location;Teacher;Participant;ID number;Att.;Grade;Feedback
+# Mon 9.11.2015 08:00 - 09:30;Eingang TI Seminarraum, Operngasse 9;Fabjan Sukalia;Bernhard Frömel;0326077;;;
+#
+
+# converted csv file
+TMPFILE=tmp.csv
+
+# eval header length in lines
+lines=$(grep -n "^;" "${CSVFILE}" | awk 'BEGIN {FS=":"}{print $1}')
+lines=$((lines+2))
+
+# remove header and rearrange columns
+tail -n +$lines "${CSVFILE}" |\
+awk '
+BEGIN {
+  FS = ";"
+  print "Matriculation Number;First Name;Last Name;Enrolment Date;Is Excused;Was Present;Slot Date;Slot Start;Slot End"
+}
+{
+  datetime = $1
+  location = $2
+  teacher = $3
+  student = $4
+  matrnr = $5
+
+  split(datetime, datetime_arr, " ")
+  split(datetime_arr[2], date_arr, ".")
+  date = sprintf("%4d-%02d-%02d", date_arr[3], date_arr[2], date_arr[1])
+  slot_start = datetime_arr[3]
+  slot_end = datetime_arr[5]
+
+  student_n = split(student, student_arr, " ")
+  firstname = student_arr[1]
+  for(i = 2; i < student_n; i++)
+    firstname = firstname" "student_arr[i]
+  lastname = student_arr[student_n]
+
+  if(matrnr ~ /[0-9]+/)
+    print "\""matrnr"\";"firstname";"lastname";;;;"date";"slot_start";"slot_end
+}
+' > "${TMPFILE}"
+
+
+##
+# csv to config (print to stdout)
+##
 
 # ignore first line of enrolments
 # sort enrolments w.r.t. slot start time and student ID
 # and create schedule
-tail -n+2 ${4} |
+tail -n+2 "${TMPFILE}" |
 sort -t ';' -k 8,8 -k 1,1 |
 gawk -F ";" '
 function add_minutes(start, duration_mins) {
@@ -77,6 +145,7 @@ BEGIN {
 }
 {
     if ($8 != last_slot) {
+      slot_date = $7;
       last_slot = $8;
       room = (room + 1) % num_rooms;
       group = group + 1;
@@ -86,8 +155,8 @@ BEGIN {
         print "]";
         print "  },";
       }
-      "date --date=\"'${EXAM_DATE}' " add_minutes(last_slot, -10) " +0100\" +%s" | getline unix_start;
-      "date --date=\"'${EXAM_DATE}' " $9 " +0100\" +%s" | getline unix_stop;
+      "date --date=\"" slot_date " " add_minutes(last_slot, -10) " +0100\" +%s" | getline unix_start;
+      "date --date=\"" slot_date " " $9 " +0100\" +%s" | getline unix_stop;
       unix_start = unix_start + 10*60;
       print "  {"
       print "    \"group\": ", group, ",";
@@ -110,3 +179,8 @@ print "  }"
 print "]"
 }
 '
+
+##
+# cleanup
+##
+rm -f "$TMPFILE"
