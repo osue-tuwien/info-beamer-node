@@ -1,11 +1,11 @@
-info-beamer-node for OSUE exams
+info-beamer-node for OSUE Exams
 ===============================
 
 An info-beamer node from
 [dividuum/info-beamer-nodes](https://github.com/dividuum/info-beamer-nodes),
 modified for the OSUE exams @ TU Wien.
 
-The subdirectory 'scripts' contains startup scripts for the Raspberry Pi or
+The subdirectory `scripts` contains startup scripts for the Raspberry Pi or
 Jetson TK boards connected to the displays of our labs, and a tool to generate
 the exam schedule for the nodes.
 
@@ -20,13 +20,14 @@ subdirectories for the LICENSE.
 Configuration
 -------------
 
-See the README in the 'scripts' folder how to configure the nodes for an exam.
+See the [README](scripts/README.md) in the `scripts` folder how to configure
+the nodes for an exam.
 
 
 Installation
 ------------
 
-Copy the 'node' directory to the Raspberry Pi.
+Copy the `node` directory to the Raspberry Pi.
 
 Install the startup scripts (e.g., add a cronjob).
 
