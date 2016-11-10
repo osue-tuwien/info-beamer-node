@@ -5,8 +5,8 @@ info-beamer-node
 schedule.json
 -------------
 
-Generate with ../scripts/create_schedule.sh from CSV file containing the exam
-enrolments.
+Generate with [create_schedule.sh](../scripts/create_schedule.sh) from CSV file
+containing the exam enrolments.
 
 
 config.json
