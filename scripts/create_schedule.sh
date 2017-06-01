@@ -6,7 +6,7 @@
 #
 # @brief Generates a schedule for the info beamer nodes.
 #
-# TUWEL CSV file format, example (without email column):
+# TUWEL CSV file format, example:
 # Kurs:; OSUE Test
 # :
 # Abgabetermin:;Mittwoch, 9. November 2016, 23:55
@@ -28,7 +28,7 @@ Arguments:
   <exam>       Exam number out of {1|2}. Rooms and duration depend on this number.
   <start room> Starting room out of {1|2|3|4}. At the second exam, room 4 is
                not used for the practical part.
-  <enrolments> Exported enrolments csv from TUWEL (without email column).
+  <enrolments> Exported enrolments csv from TUWEL.
 EOF
   exit 1
 }
