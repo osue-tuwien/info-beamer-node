@@ -8,16 +8,19 @@ local json = require "json"
 -- global variables
 --
 
-local exam_nr = "exam1" -- default, can be set via config.json
-local EXAM_PHASE = {
-  exam1 = { [1] = 20*60, [2] = 5*60, [3] = 75*60},
-  exam2 = { [1] = 30*60, [2] = 10*60, [3] = 80*60}
-}
-
 local video_filename = "" -- default: no video to play, can be set via config.json
 
 local video_running = false -- flag indicating if video is currently running or not
 local video = nil -- video that is currently playing
+
+local base_time = N.base_time or 0 -- captures start time of the node
+
+local current_exam
+local all_exams = {}
+local day = 0
+local scores_hist = { }
+local scores_hist_vals = 0
+local exam_started = false
 
 
 util.auto_loader(_G)
@@ -26,13 +29,6 @@ util.auto_loader(_G)
 util.file_watch("schedule.json", function(content)
     print("reloading schedule")
     exams = json.decode(content)
-    exam_start_off = EXAM_PHASE[exam_nr][1]
-    exam_stop_off = EXAM_PHASE[exam_nr][2]
-    -- correct for the preparation time and/or mctest exam
-    for idx, exam in ipairs(exams) do -- adjust start and stop times, also crudely compensate for timezone
-        exam.unix_start = exam.unix_start + exam_start_off + 60*60
-        exam.unix_stop = exam.unix_stop - exam_stop_off + 60*60
-    end
 end)
 
 util.file_watch("scores.json", function(content)
@@ -53,19 +49,21 @@ util.file_watch("config.json", function(content)
     print(saal)
     rooms = config.rooms
     room = config.rooms[saal]
-    exam_nr = "exam" .. config.exam
-    print(exam_nr)
     video_filename = config.video
     print("video: " .. video_filename)
 end)
 
-local base_time = N.base_time or 0
-local current_exam
-local all_exams = {}
-local day = 0
-local scores_hist = { }
-local scores_hist_vals = 0
-local exam_started = false
+-- returns current time as timestamp
+function get_now()
+    -- sys.now() gives the seconds from node start
+    return base_time + sys.now()
+end
+
+-- returns current time as string
+function get_now_str()
+    local time = get_now() % 86400
+    return string.format("%02d:%02d", math.floor(time / 3600), math.floor(time % 3600 / 60))
+end
 
 function create_scores_hist()
   for i = 0,10 do
@@ -99,18 +97,11 @@ vortex = (function()
     }
 end)()
 
-function get_now()
-    --local time2 = (base_time + sys.now()) % 86400
-    --print ("basetime: " .. (base_time + sys.now()))
-    --print ("time: " .. string.format("%d:%02d", math.floor(time2 / 3600), math.floor(time2 % 3600 / 60)) )
-    return base_time + sys.now()
-end
-
 function check_next_exam()
     local now = get_now()
     local room_next = {}
     for idx, exam in ipairs(exams) do
-        if rooms[exam.place] and not room_next[exam.place] and exam.unix_start + EXAM_PHASE[exam_nr][3] > now then 
+        if rooms[exam.place] and not room_next[exam.place] and exam.unix_stop > now then
             room_next[exam.place] = exam
         end
     end
@@ -161,33 +152,6 @@ function wrap(str, limit, indent, indent1)
     end
     return splitted
 end
-
-local clock = (function()
-    local base_time = N.base_time or 0
-
-    local function set(time)
-        base_time = tonumber(time) - sys.now()
-    end
-
-    util.data_mapper{
-        ["clock/midnight"] = function(since_midnight)
-            set(since_midnight)
-        end;
-    }
-
-    local left = 0
-
-    local function get()
-    --print ("basetime: " .. (base_time + sys.now()))
-        local time = (base_time + sys.now()) % 86400
-        return string.format("%d:%02d", math.floor(time / 3600), math.floor(time % 3600 / 60))
-    end
-
-    return {
-        get = get;
-        set = set;
-    }
-end)()
 
 check_next_exam()
 
@@ -341,7 +305,7 @@ content = switcher{
                 end
                 white:draw(0, 140, WIDTH, 240, 0.2)
 
-                font:write(20, 450, current_exam.room_start .. " - " .. (ut2str(current_exam.unix_stop)) , 65, 1,1,1,1)
+                font:write(20, 450, current_exam.start .. " - " .. current_exam.stop, 65, 1,1,1,1)
                 if delta > 0 then
                     font:write(20, 520, string.format("in %d min", math.floor(delta/60)+1), 65, 1,1,1,0.8)
                 end
@@ -408,7 +372,7 @@ content = switcher{
     --                    blue = 0.0
     --                    font:write(700, y, "*started*", 50, red, green, blue, alpha)
     --                end
-    --                font:write(30, y, exam.room_start, 50, red, green, blue, alpha)
+    --                font:write(30, y, exam.start, 50, red, green, blue, alpha)
     --                font:write(190, y, exam.place, 50, red, green, blue, alpha)
     --                font:write(400, y, exam.lines[math.floor((sys.now()/2) % #exam.lines)+1], 50, red, green, blue, alpha)
     --                y = y + 60
@@ -470,7 +434,7 @@ function draw_clock()
       bg:draw(0,0,WIDTH,HEIGHT)
     end
 
-    local time = get_now() --sys.now()
+    local time = get_now()
 
     local hour = (time / 3600) % 12
     local minute = time % 3600 / 60
@@ -492,7 +456,8 @@ function node.render()
   if base_time == 0 then
     return
   end
-  if (current_exam ~= nil and current_exam.unix_start >= get_now() + 10*60) then
+  -- draw an analog clock until 10min before the exam starts
+  if (current_exam ~= nil and current_exam.unix_start - 10*60 >= get_now()) then
     black:draw(0, 0, WIDTH, HEIGHT, 0.7)
     draw_clock()
   else
@@ -502,7 +467,7 @@ function node.render()
     util.draw_correct(logo, -30, 20, 320, 140)
     --util.draw_correct(tusignet, 20, 20, 2400, 120)
     font:write(390, 10, saal, 125, 1,1,1,1)
-    font:write(870, 10, clock.get(), 125, 1,1,1,1)
+    font:write(870, 10, get_now_str(), 125, 1,1,1,1)
     --font:write(WIDTH-300, 20, string.format("Day %d", day), 100, 1,1,1,1)
 
     local fov = math.atan2(HEIGHT, WIDTH*2) * 360 / math.pi

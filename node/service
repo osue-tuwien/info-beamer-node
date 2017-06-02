@@ -1,4 +1,7 @@
 #!/usr/bin/python
+#
+# https://info-beamer.com/doc/info-beamer#usage How do I get the current time?
+#
 import sys
 import time
 import pytz
@@ -6,18 +9,22 @@ import socket
 from calendar import timegm
 from datetime import datetime, date
 
+# Config
+startdate = date(2017,04,07)
 diff = None
+timezone = pytz.timezone('Europe/Vienna')
 
 # Fake time in UTC
-#diff = datetime(2015,11,9,07,49,10) - datetime.utcnow()
+diff = datetime(2017,04,07,7,49,10) - datetime.utcnow()
 
-met = pytz.timezone("Europe/Vienna")
+
 def current_time():
     now = datetime.utcnow()
     if diff:
         now += diff
+    # converts timestamp to locale settings
     now = now.replace(tzinfo=pytz.utc)
-    now = now.astimezone(met)
+    now = now.astimezone(timezone)
     now = now.replace(tzinfo=None)
     timestamp = timegm(now.timetuple()) + now.microsecond / 1000000.
     return now, timestamp
@@ -29,7 +36,7 @@ def send(data):
     print >>sys.stderr, "SENT >>> ", data
 
 def send_clock(now, ts):
-    day = (now.date() - date(2015, 11, 9)).days
+    day = (now.date() - startdate).days
     since_midnight = (
         now -
         now.replace(hour=0, minute=0, second=0, microsecond=0)

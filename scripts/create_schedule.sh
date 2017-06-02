@@ -16,6 +16,14 @@
 # Fr 11.11.2016 08:00 - 09:30;test;Denise Ratasich;Denise Ratasich;0826389;denise.ratasich@tuwien.ac.at;;;
 #
 # Students who are registered by supervisors are marked with [xx].
+#
+# Note: Timestamps are saved as seconds since epoch but given the locale
+# settings.
+#
+# Note: don't use slot end of the csv. You might configure TUWEL slots in two
+# different ways - with or without pause -> hence we take the configuration
+# here in the script END_OFFSET and add it to the start time, just to be in any
+# case consistent.
 ##
 
 function usage {
@@ -44,12 +52,15 @@ CSVFILE="$3"
 # Exam number specific settings:
 # TIL_ROOMS ... number of available rooms
 # LAB_START_OFFSET ... nr of minutes from slot start when the lab part starts
+# END_OFFSET ... nr of minutes from slot start when the slot ends (5 or 10min before the next starts)
 if [ "$1" -eq 1 ]; then
   TIL_ROOMS=4
   LAB_START_OFFSET=20
+  END_OFFSET=95
 elif [ "$1" -eq 2 ]; then
   TIL_ROOMS=3 # (TI4 is for multiple-choice test)
   LAB_START_OFFSET=30
+  END_OFFSET=110
 else
   echo "[ERROR] Wrong exam number (must be 1 or 2): '$1'" >&2
   usage
@@ -144,6 +155,11 @@ BEGIN {
   pcoff = 0;
 }
 {
+    # Matriculation Number;First Name;Last Name;Enrolment Date;Is Excused;Was Present;Slot Date;Slot Start;Slot End
+    # $1 .. Matr.Nu.
+    # $7 .. slot date
+    # $8 .. slot start time
+    # $9 .. slot end time - dont use, see note in header
     if ($8 != last_slot) {
       slot_date = $7;
       last_slot = $8;
@@ -155,16 +171,17 @@ BEGIN {
         print "]";
         print "  },";
       }
-      "date --date=\"" slot_date " " add_minutes(last_slot, -10) " +0100\" +%s" | getline unix_start;
-      "date --date=\"" slot_date " " $9 " +0100\" +%s" | getline unix_stop;
-      unix_start = unix_start + 10*60;
+      # start time of lab part as unix timestamp (locale timezone)
+      "date --utc --date=\"" slot_date " " add_minutes($8, '${LAB_START_OFFSET}') "\" +%s" | getline unix_start;
+      # end of lab part (and slot) as unix timestamp (locale timezone)
+      "date --utc --date=\"" slot_date " " add_minutes($8, '${END_OFFSET}') "\" +%s" | getline unix_stop;
       print "  {"
       print "    \"group\": ", group, ",";
-      print "    \"start\": \"", $8, "\",";
-      print "    \"room_start\": \"", add_minutes($8, '${LAB_START_OFFSET}'), "\",";
-      print "    \"stop\": \"", $9, "\",";
-      print "    \"unix_start\": \"", unix_start, "\",";
-      print "    \"unix_stop\": \"", unix_stop, "\",";
+      print "    \"slot_start\": \"", $8, "\",";
+      print "    \"start\": \"", add_minutes($8, '${LAB_START_OFFSET}'), "\",";
+      print "    \"stop\": \"", add_minutes($8, '${END_OFFSET}'), "\",";
+      print "    \"unix_start\": ", unix_start, ",";
+      print "    \"unix_stop\": ", unix_stop, ",";
       print "    \"place\": \"Lab ", room+1, "\",";
       printf("    \"students\": [ %s", $1);
     } else {
