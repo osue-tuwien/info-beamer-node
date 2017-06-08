@@ -8,34 +8,23 @@ local json = require "json"
 -- global variables
 --
 
-local video_filename = "" -- default: no video to play, can be set via config.json
-
-local video_running = false -- flag indicating if video is currently running or not
-local video = nil -- video that is currently playing
-
 local base_time = N.base_time or 0 -- captures start time of the node
 
 local current_exam
 local all_exams = {}
 local day = 0
-local scores_hist = { }
-local scores_hist_vals = 0
 local exam_started = false
 
 
 util.auto_loader(_G)
 
--- Reload and save schedule into 'exams'
+-- reload and save schedule into 'exams'
 util.file_watch("schedule.json", function(content)
     print("reloading schedule")
     exams = json.decode(content)
 end)
 
-util.file_watch("scores.json", function(content)
-  print("reloading scores")
-  scores = json.decode(content)
-end)
-
+-- reload and save config
 util.file_watch("config.json", function(content)
     print("reloading config")
     local config = json.decode(content)
@@ -49,9 +38,21 @@ util.file_watch("config.json", function(content)
     print(saal)
     rooms = config.rooms
     room = config.rooms[saal]
-    video_filename = config.video
-    print("video: " .. video_filename)
 end)
+
+-- receive time and day (via socket)
+util.data_mapper{
+    ["clock/set"] = function(time)
+        base_time = tonumber(time) - sys.now()
+        N.base_time = base_time
+        check_next_exam()
+        print("UPDATED TIME", base_time)
+    end;
+    ["clock/day"] = function(new_day)
+        print("DAY", new_day)
+        day = new_day
+    end;
+}
 
 -- returns current time as timestamp
 function get_now()
@@ -64,38 +65,6 @@ function get_now_str()
     local time = get_now() % 86400
     return string.format("%02d:%02d", math.floor(time / 3600), math.floor(time % 3600 / 60))
 end
-
-function create_scores_hist()
-  for i = 0,10 do
-    scores_hist[i] = 0
-  end
-  scores_hist_vals = 0
-
-  for j = 1, #scores do
-    local i = math.floor(scores[j]/5)
-    scores_hist[i] = scores_hist[i] + 1
-    --scores_hist_vals = scores_hist_vals + 1;
-    if scores_hist_vals < scores_hist[i] then
-      scores_hist_vals = scores_hist[i]
-    end
-  end
-end
-
-vortex = (function()
-    local function draw()
-        local time = sys.now()
-        trichter:use{
-            Overlay = _G[room.texture];
-            Grid = trichter_grid;
-            time = time/room.speed;
-        }
-        trichter_map:draw(-850, 0, WIDTH+150, HEIGHT)
-        trichter:deactivate()
-    end
-    return {
-        draw = draw;
-    }
-end)()
 
 function check_next_exam()
     local now = get_now()
@@ -155,25 +124,6 @@ end
 
 check_next_exam()
 
-util.data_mapper{
-    ["clock/set"] = function(time)
-        base_time = tonumber(time) - sys.now()
-        N.base_time = base_time
-        check_next_exam()
-        print("UPDATED TIME", base_time)
-    end;
-    ["clock/day"] = function(new_day)
-        print("DAY", new_day)
-        day = new_day
-    end;
-}
-
--- unix time to hours:seconds string
-function ut2str(ut)
-  local time = (ut) % 86400
-  return string.format("%d:%02d", math.floor(time / 3600), math.floor(time % 3600 / 60))
-end
-
 function next_exam_soon()
   check_next_exam()
   if current_exam and current_exam.unix_start - get_now() < 4.0 * 60 then
@@ -197,11 +147,7 @@ function calc_exam_showtime()
   return 10
 end
 
-function default_screen_time()
-  return 10
-end
-
-function video_screen_time()
+function exit_screen_time()
   return 28
 end
 
@@ -257,32 +203,8 @@ function switcher(screens)
     }
 end
 
-
-
-function start_video(video_fn)
-  if not video then
-    video_running = true
-    video = util.videoplayer(video_fn, { loop = true})
-  else
-    print("ERR: attempted to start a video while another one is running!")
-  end
-end
-
-function stop_video()
-  video_running = false
-  video.dispose()
-  video = nil
-end
-
-
 content = switcher{
     {
-    --  time = default_screen_time;
-    --  enabled = function ()
-    --    return true
-    --  end;
-    --  draw = draw_clock;
-    --}, {
         -- TODO: show seat plan for 20 minutes in case the delta to the next exam
         time = calc_exam_showtime;
         enabled = function()
@@ -293,9 +215,6 @@ content = switcher{
                 font:write(20, 150, "Upcoming Exam Slot", 80, 1,1,1,1)
                 white:draw(0, 140, WIDTH, 240, 0.2)
                 font:write(20, 330, "No more exam slots.", 50, 1,1,1,1)
-          if video_filename ~= "" and not video_running then
-            start_video(video_filename)
-          end
             else
                 local delta = current_exam.unix_start - get_now()
                 if delta > 0 then
@@ -324,82 +243,20 @@ content = switcher{
                     font:write(730+50, 215 + 40 * i, "TI" .. room.startid + i-1, 40, 0.85, 0.85, 0.0, 1.0)
                     font:write(840+50, 215 + 40 * i, "- " .. student, 40, 0.85, 0.85, 0.0, 1.0)
                 end
-                if next_exam_soon() and video_running then
-                  stop_video()
-                end
             end
         end
-      }, {
-          time = video_screen_time;
-          enabled = function()
+    }, {
+        time = exit_screen_time;
+        enabled = function()
             return not next_exam_soon() and exam_started
-          end;
-          draw = function()
-          white:draw(0, 140, WIDTH, 240, 0.2)
-          font:write(20, 150, "Exam Finished", 80, 1,1,1,1)
-          font:write(20, HEIGHT/2-30, "Please leave the TI-LAB through the front glass door exit", 35,1,1,1,1)
-          font:write(20, HEIGHT/2+30, "Bitte verlassen Sie das TI-LAB durch den Glastuerenausgang", 35, 1,1,1,1)
-          if video_filename ~= "" and not video_running then
-            start_video(video_filename)
-          end
+        end;
+        draw = function()
+            white:draw(0, 140, WIDTH, 240, 0.2)
+            font:write(20, 150, "Exam Finished", 80, 1,1,1,1)
+            font:write(20, HEIGHT/2-30, "Please leave the TILAB through the front glass door exit", 35,1,1,1,1)
+            font:write(20, HEIGHT/2+30, "Bitte verlassen Sie das TILAB durch den Glastuerenausgang", 35, 1,1,1,1)
         end
-    --}, { -- less is more... 
-    --    time = default_screen_time;
-    --    draw = function()
-    --        font:write(400, 200, "Other Labs", 80, 1,1,1,1)
-    --        white:draw(0, 300, WIDTH, 302, 0.6)
-    --        y = 320
-    --        local time_sep = false
-    --        if #all_exams > 0 then
-    --            for idx, exam in ipairs(all_exams) do
-    --                if not time_sep and exam.unix_start + 60*30 > get_now() then
-    --                    if idx > 1 then
-    --                        y = y + 5
-    --                        white:draw(0, y, WIDTH, y+2, 0.6)
-    --                        y = y + 20
-    --                    end
-    --                    time_sep = true
-    --                end
-
-    --              local alpha = 1
-    --                local red = 1
-    --                local green = 1
-    --                local blue = 1
-    --                if not time_sep then
-    --                    alpha = 1
-    --                    red = 0.9
-    --                    green = 0.9
-    --                    blue = 0.0
-    --                    font:write(700, y, "*started*", 50, red, green, blue, alpha)
-    --                end
-    --                font:write(30, y, exam.start, 50, red, green, blue, alpha)
-    --                font:write(190, y, exam.place, 50, red, green, blue, alpha)
-    --                font:write(400, y, exam.lines[math.floor((sys.now()/2) % #exam.lines)+1], 50, red, green, blue, alpha)
-    --                y = y + 60
-    --            end
-    --        else
-    --            font:write(400, 330, "Exams are finished.", 50, 1,1,1,1)
-    --        end
-    --    end
     },
-    -- LIVE stats
-    --{
-    --time = function() return 15 end; --default_screen_time;
-    --draw = function()
-    --        create_scores_hist()
-    --        font:write(400, 200, "Live Statistics", 80, 1,1,1,1)
-    --        white:draw(0, 300, WIDTH, 302, 0.6)
-    --        font:write(600, 650, "all exams (incl. ongoing)", 40, 1,1,1,1)
-    --
-    --        
-    --
-    --        -- quick'n'dirty histogram
-    --        for i = 0,10 do
-    --          font:write(90+(100*i),600, i*5 .. "" , 50, 1, 1, 1, 1)
-    --          white:draw(95+(100*i),580-math.floor(270*(((scores_hist[i]/scores_hist_vals)))), 95+(100*i)+40, 580, 1, 1, 1, 1)
-    --        end
-    --end
-    --}
 }
 
 function hand(size, strength, angle, r,g,b,a)
@@ -413,7 +270,7 @@ end
 local bg
 
 function draw_clock()
-  if not bg then
+    if not bg then
     gl.pushMatrix()
     gl.translate(WIDTH/2, HEIGHT/2) 
     for i = 0, 59 do
@@ -451,8 +308,24 @@ function draw_clock()
     dot:draw(WIDTH/2-30, HEIGHT/2-30, WIDTH/2+30, HEIGHT/2+30)
 end;
 
+vortex = (function()
+    local function draw()
+        local time = sys.now()
+        trichter:use{
+            Overlay = _G[room.texture];
+            Grid = trichter_grid;
+            time = time/room.speed;
+        }
+        trichter_map:draw(-850, 0, WIDTH+150, HEIGHT)
+        trichter:deactivate()
+    end
+    return {
+        draw = draw;
+    }
+end)()
+
 function node.render()
-    vortex.draw()
+  vortex.draw()
   if base_time == 0 then
     return
   end
@@ -461,9 +334,6 @@ function node.render()
     black:draw(0, 0, WIDTH, HEIGHT, 0.7)
     draw_clock()
   else
-    if not video_running then
-      black:draw(0, 0, WIDTH, 140, 1)
-    end
     util.draw_correct(logo, -30, 20, 320, 140)
     --util.draw_correct(tusignet, 20, 20, 2400, 120)
     font:write(390, 10, saal, 125, 1,1,1,1)
@@ -474,9 +344,6 @@ function node.render()
     gl.perspective(fov, WIDTH/2, HEIGHT/2, -WIDTH,
     WIDTH/2, HEIGHT/2, 0)
 
-    if video_running then
-      video:draw(0, 0, 1280, 720, 0.5)
-    end
     content.draw()
   end
 end
