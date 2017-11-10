@@ -10,12 +10,12 @@ from calendar import timegm
 from datetime import datetime, date
 
 # Config
-startdate = date(2017,06,21)
+startdate = date(2017,11,13)
 diff = None
 timezone = pytz.timezone('Europe/Vienna')
 
 # Fake time in UTC
-#diff = datetime(2017,06,21,9,49,45) - datetime.utcnow()
+#diff = datetime(2017,11,13,8,59,45) - datetime.utcnow()
 
 
 def current_time():
@@ -57,6 +57,6 @@ def main():
             continue
         send_clock(now, ts)
         time.sleep(2)
-        
+
 if __name__ == "__main__":
     main()

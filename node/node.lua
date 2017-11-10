@@ -240,8 +240,14 @@ content = switcher{
                     font:write(20, 300 - 60 + 60 * idx, line, 100, 1,1,1,1)
                 end
                 for i, student in ipairs(current_exam.students) do
-                    font:write(730+50, 215 + 40 * i, "TI" .. room.startid + i-1, 40, 0.85, 0.85, 0.0, 1.0)
-                    font:write(840+50, 215 + 40 * i, "- " .. student, 40, 0.85, 0.85, 0.0, 1.0)
+                    x = 480
+                    y = 215
+                    if i >= 12 then
+                       x = 880
+                       y = 215 - 40*14
+                    end
+                    font:write(x+50, y + 40 * i, room.startid + i-1, 40, 0.85, 0.85, 0.0, 1.0)
+                    font:write(x+150, y + 40 * i, "- " .. student, 40, 0.85, 0.85, 0.0, 1.0)
                 end
             end
         end

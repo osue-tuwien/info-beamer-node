@@ -1,9 +1,7 @@
 {
     "devices": {
         "b0": "Lab 1",
-        "b1": "Lab 2",
-        "b2": "Lab 3",
-        "b3": "Lab 4"
+        "b1": "Lab 2"
     },
     "video": "",
     "saal": "Lab 1",
@@ -11,22 +9,12 @@
         "Lab 1": {
             "texture": "marble",
             "speed": 100,
-            "startid": 1
+            "startid": 101
         },
         "Lab 2": {
             "texture": "marble",
             "speed": 100,
-            "startid": 10
-        },
-        "Lab 3": {
-            "texture": "marble",
-            "speed": 100,
-            "startid": 19
-        },
-        "Lab 4": {
-            "texture": "marble",
-            "speed": 100,
-            "startid": 28
+            "startid": 126
         }
     }
 }
