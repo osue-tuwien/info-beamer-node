@@ -1,13 +1,19 @@
 #!/usr/bin/python
 #
+# Connects to the info-beamer node (localhost, 4444 over a UDP socket) to send
+# current time (as timestamp).
+#
+# https://info-beamer.com/doc/info-beamer#node.event/data
 # https://info-beamer.com/doc/info-beamer#usage How do I get the current time?
 #
+
 import sys
 import time
 import pytz
 import socket
 from calendar import timegm
 from datetime import datetime, date
+
 
 # Config
 startdate = date(2017,11,13)

@@ -74,10 +74,7 @@ for line in data:
         print("    \"slot_start\": \"{}\",".format(start.strftime('%H:%M')))
         print("    \"start\": \"{}\",".format(start.strftime('%H:%M')))
         print("    \"stop\": \"{}\",".format(stop.strftime('%H:%M')))
-        print("    \"unix_start\": {:.0f},".format(
-            start.timestamp() + 3600))
-        print("    \"unix_stop\": {:.0f},".format(
-            stop.timestamp() + 3600))
+        print("    \"duration\": {:.0f},".format((stop-start).seconds))
         print("    \"place\": \"Lab {}\",".format(room_no[room]))
         room_cur = room
         date_cur = date

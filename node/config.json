@@ -3,17 +3,12 @@
         "b0": "Lab 1",
         "b1": "Lab 2"
     },
-    "video": "",
     "saal": "Lab 1",
     "rooms": {
         "Lab 1": {
-            "texture": "marble",
-            "speed": 100,
             "startid": 101
         },
         "Lab 2": {
-            "texture": "marble",
-            "speed": 100,
             "startid": 126
         }
     }
