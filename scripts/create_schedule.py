@@ -32,36 +32,43 @@ parser = argparse.ArgumentParser(
     description="Prints a schedule for the info-beamer nodes.")
 parser.add_argument('csvfile',
                     help="Exported enrolments csv from TUWEL (all columns).")
+parser.add_argument('-p', "--preparation", type=int, default=0,
+                    help="""Preparation time in minutes (default: 0). Shifts
+                    lab start from slot start.""")
+parser.add_argument('-r', "--rooms", type=int, default=4,
+                    help="""Number of computertest rooms (default: 4). Lab room
+                    will be iterated from start room over all rooms.""")
+parser.add_argument('-s', "--startroom", type=int, default=4,
+                    help="""Start room (default: 4). Rooms are numbered from 1
+                    .. number of rooms given with -r.""")
 args = parser.parse_args()
 
-names = ['date', 'room', 'id']
-cols = (0, 1, 4)
+# read slots and ids from the enrolments
+names = ['date', 'id']
+cols = (0, 4)
 dtype = [(n, 'S100') for n in names]
 data = np.genfromtxt(args.csvfile, delimiter=';', names=names, usecols=cols,
                      skip_header=7, dtype=dtype)
 
-# extract number of rooms
-rooms = np.unique(data['room'])
-# room mapped to numbers 0,1,... alphabetically
-room_no = {}
-for i in range(len(rooms)):
-    room_no[rooms[i]] = i + 1
-
 # print schedule
-group = 0
-room_cur = ""
+preparation = datetime.timedelta(minutes=args.preparation)
+group = 1
+room = args.startroom
 date_cur = ""
 students = []
 print("[")
 for line in data:
-    room = line['room']
     date = line['date']
-    if room != room_cur and date != date_cur:
+    if date != date_cur:
         # end last slot
-        group = group + 1
-        if room_cur != "":
+        if date_cur != "": # except the first time
             print("    \"students\": {}".format(sorted(students)))
             print("  },")
+            group = group + 1
+            if room >= args.rooms:
+                room = 1
+            else:
+                room = room + 1
         # a new slot
         students = []
         print("  {")
@@ -69,13 +76,14 @@ for line in data:
         dateparts = date.split()
         startstr = dateparts[1].decode('utf8') + " " + dateparts[2].decode('utf8')
         stopstr = dateparts[1].decode('utf8') + " " + dateparts[4].decode('utf8')
-        start = datetime.datetime.strptime(startstr, '%d.%m.%Y %H:%M')
+        slotstart = datetime.datetime.strptime(startstr, '%d.%m.%Y %H:%M')
+        start = slotstart + preparation
         stop = datetime.datetime.strptime(stopstr, '%d.%m.%Y %H:%M')
-        print("    \"slot_start\": \"{}\",".format(start.strftime('%H:%M')))
+        print("    \"slot_start\": \"{}\",".format(slotstart.strftime('%H:%M')))
         print("    \"start\": \"{}\",".format(start.strftime('%H:%M')))
         print("    \"stop\": \"{}\",".format(stop.strftime('%H:%M')))
         print("    \"duration\": {:.0f},".format((stop-start).seconds))
-        print("    \"place\": \"Lab {}\",".format(room_no[room]))
+        print("    \"place\": \"Lab {}\",".format(room))
         room_cur = room
         date_cur = date
     # append student id from every line

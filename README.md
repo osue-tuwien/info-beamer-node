@@ -32,6 +32,21 @@ Copy the `node` directory to the Raspberry Pi.
 Install the startup scripts (e.g., add a cronjob).
 
 
+Usage
+-----
+
+Copy the python script `send-command` or clone this repo to the lab application
+server.
+
+For example, start the first slot in lab room 4.
+``` bash
+$ ssh <lab/osue/info-beamer-node>
+$ ./send-command -r 4 reset
+$ ./send-command -r 4 forward
+$ ./send-command -r 4 start
+```
+
+
 References
 ----------
 

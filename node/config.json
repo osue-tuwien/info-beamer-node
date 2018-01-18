@@ -1,15 +1,1 @@
-{
-    "devices": {
-        "b0": "Lab 1",
-        "b1": "Lab 2"
-    },
-    "saal": "Lab 1",
-    "rooms": {
-        "Lab 1": {
-            "startid": 101
-        },
-        "Lab 2": {
-            "startid": 126
-        }
-    }
-}
+config_tilab.json

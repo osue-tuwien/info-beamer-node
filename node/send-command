@@ -14,10 +14,10 @@ import argparse
 
 # config
 SOCK_IP = {
-    1: '127.0.0.1',
-    2: '127.0.0.1',
-    3: '127.0.0.1',
-    4: '127.0.0.1',
+    1: 'avpi1',
+    2: 'avpi2',
+    3: 'avpi3',
+    4: 'avpi4',
 }
 SOCK_PORT = 4444
 ROOMS = SOCK_IP.keys()
@@ -31,7 +31,11 @@ parser.add_argument('-r','--room', type=int, choices=ROOMS, default=1,
                     address to connect to the Pi in the given room). Choose out
                     of {}.""".format(ROOMS))
 parser.add_argument('command', type=str, choices=COMMANDS, help="""Command to
-                    send to Pi. Choose out of {}.""".format(COMMANDS))
+                    send to Pi. Choose out of {}. 'reset' shows the
+                    clock. Select the first slot with 'forward', or switch to
+                    the desired slot with 'forward' and 'backward'. Start
+                    (count down the duration) a slot with
+                    'start'.""".format(COMMANDS))
 args = parser.parse_args()
 
 

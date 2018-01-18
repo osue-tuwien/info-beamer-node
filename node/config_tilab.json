@@ -1,0 +1,23 @@
+{
+    "devices": {
+        "b0": "Lab 1",
+        "b1": "Lab 2",
+        "b2": "Lab 3",
+        "b3": "Lab 4"
+    },
+    "saal": "Lab 1",
+    "rooms": {
+        "Lab 1": {
+            "startid": 1
+        },
+        "Lab 2": {
+            "startid": 10
+        },
+        "Lab 3": {
+            "startid": 19
+        },
+        "Lab 4": {
+            "startid": 28
+        }
+    }
+}

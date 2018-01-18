@@ -7,13 +7,9 @@ Configuration for OSUE Exam
 
 * Download exam enrolments from TUWEL.
 
-* Call `create_schedule.sh` to create `schedule.json` for the 1st exam starting
-  in lab room 1:
-  ```bash
-  $ ./create_schedule.sh 1 1 enrolments.csv > ../node/schedule.json
-  ```
+* Call `create_schedule.py` to create `schedule.json`.
 
-* Adapt `config.json`, if necessary (change start room).
+* Adapt `config.json`, if necessary (change `saal`).
 
 
 Start-up on info-beamer Platform
