@@ -1,0 +1,47 @@
+[
+  {
+    "group": 1,
+    "slot_start": "09:00",
+    "start": "09:20",
+    "stop": "10:30",
+    "duration": 4200,
+    "place": "Lab 4",
+    "students": ['01234567', '76543210']
+  },
+  {
+    "group": 2,
+    "slot_start": "09:20",
+    "start": "09:40",
+    "stop": "10:50",
+    "duration": 4200,
+    "place": "Lab 1",
+    "students": ['01', '02', '03', '04', '05']
+  },
+  {
+    "group": 3,
+    "slot_start": "09:40",
+    "start": "10:00",
+    "stop": "11:10",
+    "duration": 4200,
+    "place": "Lab 2",
+    "students": ['Martina', 'Max']
+  },
+  {
+    "group": 4,
+    "slot_start": "10:00",
+    "start": "10:20",
+    "stop": "11:30",
+    "duration": 4200,
+    "place": "Lab 3",
+    "students": ['Anton', 'Berta', 'Caesar', 'Dora', 'Emil']
+  },
+  {
+    "group": 5,
+    "slot_start": "10:20",
+    "start": "10:40",
+    "stop": "11:50",
+    "duration": 4200,
+    "place": "Lab 4",
+    "students": ['Charlie', 'Juliett', 'Mike', 'Oscar', 'Romeo', 'Victor']
+  }
+]

@@ -7,17 +7,20 @@ Configuration for OSUE Exam
 
 * Download exam enrolments from TUWEL.
 
-* Call `create_schedule.py` to create `schedule.json`.
+* Call `create_schedule.py` to create `../node/schedule.json`.
 
-* Adapt `config.json`, if necessary (change `saal`).
+* Adapt `../node/config.json`, if necessary (change `saal`).
+
+Note that symlinks are not parsed. So the inputs (`config.json`,
+`schedule.json`) must be regular files.
 
 
 Start-up on info-beamer Platform
 --------------------------------
 
-* Set environment. Value from "SERIAL" is used to map the Pi to a lab room.
-  For example, SERIAL=b3 means the board is located in lab number 3. However,
-  the mapping can also be configured in the info-beamer node's `config.json`.
+* [optional] Device to place/saal mapping is configured in `config.json`. One
+  may also set the appropriate environment variable: "SERIAL" is used to map
+  the Pi to a lab room (e.g., SERIAL=b3 means the board is located in "Lab 3").
 
 * Start info-beamer node:
   ```bash
